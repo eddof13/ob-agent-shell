@@ -1,0 +1,134 @@
+#+TITLE: ob-agent-shell
+#+AUTHOR: Eddie Jesinsky
+
+Org-babel backend for [[https://github.com/xenodium/agent-shell][agent-shell]]. Execute ~#+begin_src agent-shell~ blocks
+directly against your running agent-shell buffer — no separate API key
+configuration, no second client.
+
+* Why
+
+If you already use agent-shell as your AI client in Emacs, there's no reason
+to configure a separate connection just for org-babel blocks. This package
+routes babel blocks through your existing agent-shell session.
+
+* Requirements
+
+- Emacs 29.1+
+- [[https://github.com/xenodium/agent-shell][agent-shell]] installed and a shell buffer running (~M-x agent-shell~)
+- org-mode 9.6+
+
+* Installation
+
+** Manual
+
+Clone this repo and add to your load path:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "/path/to/ob-agent-shell")
+(require 'ob-agent-shell)
+(add-to-list 'org-babel-load-languages '(agent-shell . t))
+#+end_src
+
+** use-package + straight
+
+#+begin_src emacs-lisp
+(use-package ob-agent-shell
+  :straight (:host github :repo "eddof13/ob-agent-shell")
+  :after (agent-shell org)
+  :config
+  (add-to-list 'org-babel-load-languages '(agent-shell . t)))
+#+end_src
+
+* Usage
+
+Start an agent-shell session first (~M-x agent-shell~), then execute blocks
+with ~C-c C-c~:
+
+#+begin_src org
+,#+begin_src agent-shell
+What is the capital of France?
+,#+end_src
+
+,#+RESULTS:
+: Paris.
+#+end_src
+
+Multiline queries work as expected:
+
+#+begin_src org
+,#+begin_src agent-shell
+Summarize the following in one sentence:
+
+Org-mode is a major mode for Emacs for keeping notes, maintaining
+to-do lists, planning projects, and authoring documents.
+,#+end_src
+#+end_src
+
+* Header arguments
+
+| Argument         | Description                                              |
+|------------------+----------------------------------------------------------|
+| ~:buffer NAME~   | Use a specific agent-shell buffer by name. Defaults to   |
+|                  | the most recently used agent-shell buffer.               |
+| ~:results raw~   | Insert result as plain text without the leading ~: ~     |
+|                  | prefix on each line.                                     |
+| ~:exports both~  | Include both the source block and result on export.      |
+|                  | This is the default.                                     |
+
+** Targeting a specific buffer
+
+If you run multiple agent-shell sessions (e.g. different agents or projects),
+use ~:buffer~ to route a block to a specific one:
+
+#+begin_src org
+,#+begin_src agent-shell :buffer *claude-shell*
+Explain this error...
+,#+end_src
+#+end_src
+
+To find your buffer names: ~M-x list-buffers~ or evaluate:
+
+#+begin_src emacs-lisp
+(mapcar #'buffer-name (agent-shell-buffers))
+#+end_src
+
+* Customization
+
+#+begin_src emacs-lisp
+;; Seconds to wait for a response before timing out (default: 120)
+(setq ob-agent-shell-timeout 120)
+#+end_src
+
+* How it works
+
+When a block is executed:
+
+1. Snapshots ~point-max~ in the agent-shell buffer
+2. Subscribes to ~turn-complete~, ~error~, and ~permission-request~ events
+3. Sends the block body via ~agent-shell-insert~
+4. Waits via ~sit-for~ (non-freezing — display and timers remain live)
+5. On ~turn-complete~, extracts the response text added since the snapshot,
+   strips the shell-maker separator and trailing prompt, and returns it as
+   the babel result
+6. Cleans up all subscriptions via ~unwind-protect~
+
+If a tool call triggers a permission prompt, a message appears in the echo
+area pointing you to the agent-shell buffer to approve it.
+
+* Relationship to agent-shell upstream
+
+A companion [[https://github.com/xenodium/agent-shell/pull/][PR to agent-shell]] proposes two additions that would let this
+package (and any other integration) drive agent-shell through a clean public
+API:
+
+- ~agent-shell-shell-buffer~ — public wrapper around the internal buffer
+  resolver
+- ~agent-shell-query~ — programmatic async query function with cancel support
+
+If those land upstream, the core of this package simplifies significantly.
+A branch [[https://github.com/eddof13/ob-agent-shell/pull/1][showing that simplified version]] is available as a PR on this repo.
+
+* Contributing
+
+Bug reports and patches welcome. Please open an issue first for anything
+beyond small fixes.
