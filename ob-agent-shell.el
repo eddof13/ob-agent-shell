@@ -4,7 +4,7 @@
 
 ;; Author: Eddie Jesinsky <eddie@jesinsky.com>
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "29.1") (agent-shell "20260424") (org "9.6"))
+;; Package-Requires: ((emacs "29.1") (agent-shell "20260424.1630") (org "9.6"))
 ;; Keywords: ai, org, babel
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 ;; URL: https://github.com/eddof13/ob-agent-shell
@@ -40,7 +40,6 @@
 
 (require 'agent-shell)
 (require 'ob)
-(require 'seq)
 (require 'map)
 
 (defgroup ob-agent-shell nil
@@ -59,7 +58,7 @@
   "Return the agent-shell buffer to use, or signal an error.
 If NAME is non-nil, find a live buffer by that name.
 Otherwise return the most recently used agent-shell buffer."
-  (let ((buf (if name (get-buffer name) (seq-first (agent-shell-buffers)))))
+  (let ((buf (if name (get-buffer name) (agent-shell-shell-buffer :no-error t))))
     (cond
      ((null buf)
       (user-error "No agent-shell buffer%s found; start one with M-x agent-shell"
