@@ -71,23 +71,6 @@ Otherwise return the most recently used agent-shell buffer."
                   (buffer-name buf)))
      (t buf))))
 
-;;; Response extraction
-
-(defun ob-agent-shell--extract-response (buf start-pos)
-  "Extract agent response text from BUF added after START-POS.
-Strips the echoed input and shell-maker separator, then strips the
-trailing prompt, returning only the agent response text."
-  (with-current-buffer buf
-    (let ((raw (buffer-substring-no-properties start-pos (point-max)))
-          (prompt-re (map-elt (agent-shell-get-config buf) :shell-prompt-regexp)))
-      (string-trim
-       (if (string-match (regexp-quote "<shell-maker-end-of-prompt>") raw)
-           (let ((after (substring raw (match-end 0))))
-             (if (and prompt-re (string-match (concat prompt-re ".*\\'") after))
-                 (substring after 0 (match-beginning 0))
-               after))
-         raw)))))
-
 ;;; Subscription cleanup
 
 (defun ob-agent-shell--unsubscribe-all (shell-buf tokens)
@@ -106,7 +89,6 @@ PARAMS may include :buffer to target a specific buffer by name."
          (result nil)
          (err nil)
          (done nil)
-         (start (with-current-buffer shell-buf (point-max)))
          (tokens nil))
     (unwind-protect
         (let ((timeout-timer
@@ -119,7 +101,8 @@ PARAMS may include :buffer to target a specific buffer by name."
                  :shell-buffer shell-buf
                  :event 'turn-complete
                  :on-event (lambda (_data)
-                             (setq result (ob-agent-shell--extract-response shell-buf start)
+                             (agent-shell-goto-last-interaction)
+                             (setq result (map-elt (agent-shell-interaction-at-point) :response)
                                    done t)))
                 tokens)
           (push (agent-shell-subscribe-to
