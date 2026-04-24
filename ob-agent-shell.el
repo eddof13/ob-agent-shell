@@ -66,6 +66,9 @@ Otherwise return the most recently used agent-shell buffer."
                   (if name (format " named %S" name) "")))
      ((not (buffer-live-p buf))
       (user-error "agent-shell buffer %S is no longer live" (buffer-name buf)))
+     ((not (process-live-p (get-buffer-process buf)))
+      (user-error "agent-shell buffer %S has no live process; restart with M-x agent-shell"
+                  (buffer-name buf)))
      (t buf))))
 
 ;;; Response extraction
