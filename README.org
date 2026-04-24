@@ -108,6 +108,31 @@ concurrent turns in the same buffer can cause the wrong response to be captured.
 #+begin_src emacs-lisp
 ;; Seconds to wait for a response before timing out (default: 30)
 (setq ob-agent-shell-timeout 30)
+
+;; Convert markdown responses to org-mode format via pandoc (default: nil)
+;; Requires pandoc: brew install pandoc
+(setq ob-agent-shell-convert-markdown t)
+#+end_src
+
+** Markdown to org conversion
+
+Agent responses are markdown by default.  With ~ob-agent-shell-convert-markdown~
+enabled, pandoc converts responses to org-mode syntax — headers become ~*~
+outline levels, code blocks become ~#+begin_src~, links become ~[[url][text]]~,
+and so on.
+
+#+begin_src org
+,#+begin_src agent-shell
+What is the syntax for a for loop in Python?
+,#+end_src
+
+,#+RESULTS:
+,* Python for loop
+
+,#+begin_src python
+for i in range(10):
+    print(i)
+,#+end_src
 #+end_src
 
 * How it works

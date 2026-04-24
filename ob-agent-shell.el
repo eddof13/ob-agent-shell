@@ -52,6 +52,12 @@
   :type 'integer
   :group 'ob-agent-shell)
 
+(defcustom ob-agent-shell-convert-markdown nil
+  "When non-nil, convert markdown responses to org-mode format via pandoc.
+Requires pandoc to be installed and available on PATH."
+  :type 'boolean
+  :group 'ob-agent-shell)
+
 ;;; Buffer resolution
 
 (defun ob-agent-shell--resolve-buffer (&optional name)
@@ -102,6 +108,20 @@ the property agent-shell sets on every tool-call block."
                 (setq pos next))))
           (string-trim (apply #'concat (nreverse parts))))))))
 
+;;; Markdown conversion
+
+(defun ob-agent-shell--maybe-convert (text)
+  "Convert TEXT from markdown to org-mode format if configured to do so.
+Requires `ob-agent-shell-convert-markdown' to be non-nil and pandoc on PATH."
+  (if (and ob-agent-shell-convert-markdown (executable-find "pandoc"))
+      (with-temp-buffer
+        (insert text)
+        (shell-command-on-region (point-min) (point-max)
+                                 "pandoc -f markdown -t org"
+                                 (current-buffer) t)
+        (string-trim (buffer-string)))
+    text))
+
 ;;; Subscription cleanup
 
 (defun ob-agent-shell--unsubscribe-all (shell-buf tokens)
@@ -135,7 +155,8 @@ PARAMS may include :buffer to target a specific buffer by name."
                  :event 'turn-complete
                  :on-event (lambda (_data)
                              (if-let ((response (ob-agent-shell--extract-response shell-buf)))
-                                 (setq result response done t)
+                                 (setq result (ob-agent-shell--maybe-convert response)
+                                       done t)
                                (setq err "ob-agent-shell: no response found"
                                      done t))))
                 tokens)
