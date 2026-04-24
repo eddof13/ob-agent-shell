@@ -78,37 +78,37 @@ Otherwise return the most recently used agent-shell buffer."
 
 ;;; Response extraction
 
+(defun ob-agent-shell--strip-ui-fragments (text)
+  "Return TEXT with `agent-shell-ui-state' spans removed.
+`shell-maker--extract-history' uses `buffer-substring', so the response
+string retains text properties and can be filtered here directly."
+  (let ((pos 0)
+        (len (length text))
+        parts)
+    (while (< pos len)
+      (if (get-text-property pos 'agent-shell-ui-state text)
+          (setq pos (or (next-single-property-change
+                         pos 'agent-shell-ui-state text len)
+                        len))
+        (let ((next (or (next-single-property-change
+                         pos 'agent-shell-ui-state text len)
+                        len)))
+          (push (substring-no-properties text pos next) parts)
+          (setq pos next))))
+    (string-trim (apply #'concat (nreverse parts)))))
+
 (defun ob-agent-shell--extract-response (buf)
   "Extract plain agent response text from BUF, skipping tool-call UI fragments.
 
-Positions to the last interaction, finds the response region, then walks
-it collecting only spans without the `agent-shell-ui-state' property —
-the property agent-shell sets on every tool-call block."
+Uses `agent-shell-interaction-at-point' to obtain the response, then
+strips any spans carrying the `agent-shell-ui-state' text property
+\(tool-call blocks, thinking indicators, etc.)."
   (with-current-buffer buf
-    (save-match-data
-      (save-excursion
-        (agent-shell-goto-last-interaction)
-        (when (search-forward "<shell-maker-end-of-prompt>" nil t)
-          (let* ((response-start (point))
-                 (prompt-re (map-elt (agent-shell-get-config buf) :shell-prompt-regexp))
-                 (response-end (if (and prompt-re
-                                        (re-search-forward prompt-re nil t))
-                                   (match-beginning 0)
-                                 (point-max)))
-                 (pos response-start)
-                 parts)
-            (while (< pos response-end)
-              (if (get-text-property pos 'agent-shell-ui-state)
-                  (setq pos (or (next-single-property-change
-                                 pos 'agent-shell-ui-state nil response-end)
-                                response-end))
-                (let ((next (or (next-single-property-change
-                                 pos 'agent-shell-ui-state nil response-end)
-                                response-end)))
-                  (push (buffer-substring-no-properties pos next) parts)
-                  (setq pos next))))
-            (string-trim (apply #'concat (nreverse parts)))))))
-  ))
+    (save-excursion
+      (agent-shell-goto-last-interaction)
+      (when-let* ((interaction (agent-shell-interaction-at-point))
+                  (response (cdr (assq :response interaction))))
+        (ob-agent-shell--strip-ui-fragments response)))))
 
 ;;; Markdown conversion
 
