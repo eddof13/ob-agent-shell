@@ -79,22 +79,25 @@ Otherwise return the most recently used agent-shell buffer."
 ;;; Response extraction
 
 (defun ob-agent-shell--strip-ui-fragments (text)
-  "Return TEXT with `agent-shell-ui-state' spans removed.
-`shell-maker--extract-history' uses `buffer-substring', so the response
-string retains text properties and can be filtered here directly."
+  "Return TEXT keeping only agent_message_chunk spans and untagged text.
+Current agent-shell tags all buffer content with an `agent-shell-ui-state'
+alist whose :qualified-id identifies the span type.  Only spans ending in
+\"agent_message_chunk\" are response prose; others (tool calls, thinking
+indicators, etc.) are UI-only and should be omitted."
   (let ((pos 0)
         (len (length text))
         parts)
     (while (< pos len)
-      (if (get-text-property pos 'agent-shell-ui-state text)
-          (setq pos (or (next-single-property-change
-                         pos 'agent-shell-ui-state text len)
-                        len))
-        (let ((next (or (next-single-property-change
-                         pos 'agent-shell-ui-state text len)
-                        len)))
-          (push (substring-no-properties text pos next) parts)
-          (setq pos next))))
+      (let* ((state (get-text-property pos 'agent-shell-ui-state text))
+             (qid (and state (cdr (assq :qualified-id state))))
+             (keep (or (null state)
+                       (and qid (string-suffix-p "agent_message_chunk" qid))))
+             (next (or (next-single-property-change
+                        pos 'agent-shell-ui-state text len)
+                       len)))
+        (when keep
+          (push (substring-no-properties text pos next) parts))
+        (setq pos next)))
     (string-trim (apply #'concat (nreverse parts)))))
 
 (defun ob-agent-shell--extract-response (buf)
