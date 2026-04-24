@@ -102,6 +102,10 @@ To find buffer names: ~M-x list-buffers~ or ~(mapcar #'buffer-name (agent-shell-
 ~agent-shell-goto-last-interaction~ always jumps to the most recent interaction, so
 concurrent turns in the same buffer can cause the wrong response to be captured.
 
+*Note on tool use:* if the agent invokes tools during a turn (file reads, code
+execution, etc.), the ~#+RESULTS:~ block may contain UI artifacts (~▼ ~, ~▶ ~)
+from collapsed tool call sections.  Plain text responses are not affected.
+
 * Customization
 
 #+begin_src emacs-lisp
