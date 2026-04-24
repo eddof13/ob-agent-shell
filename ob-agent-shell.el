@@ -103,9 +103,12 @@ PARAMS may include :buffer to target a specific buffer by name."
                  :shell-buffer shell-buf
                  :event 'turn-complete
                  :on-event (lambda (_data)
-                             (agent-shell-goto-last-interaction)
-                             (setq result (map-elt (agent-shell-interaction-at-point) :response)
-                                   done t)))
+                             (with-current-buffer shell-buf
+                               (agent-shell-goto-last-interaction)
+                               (if-let ((response (map-elt (agent-shell-interaction-at-point) :response)))
+                                   (setq result response done t)
+                                 (setq err "ob-agent-shell: no response found at interaction point"
+                                       done t)))))
                 tokens)
           (push (agent-shell-subscribe-to
                  :shell-buffer shell-buf

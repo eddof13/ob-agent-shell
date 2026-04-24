@@ -113,14 +113,12 @@ for manual queries a concurrent turn can cause the wrong response to be captured
 
 When a block is executed:
 
-1. Snapshots ~point-max~ in the agent-shell buffer
-2. Subscribes to ~turn-complete~, ~error~, and ~permission-request~ events
-3. Sends the block body via ~agent-shell-insert~
-4. Waits via ~sit-for~ (non-freezing — display and timers remain live)
-5. On ~turn-complete~, extracts the response text added since the snapshot,
-   strips the shell-maker separator and trailing prompt, and returns it as
-   the babel result
-6. Cleans up all subscriptions via ~unwind-protect~
+1. Subscribes to ~turn-complete~, ~error~, and ~permission-request~ events
+2. Sends the block body via ~agent-shell-insert~
+3. Waits via ~sit-for~ (non-freezing — display and timers remain live)
+4. On ~turn-complete~, calls ~agent-shell-goto-last-interaction~ and reads the
+   response via ~agent-shell-interaction-at-point~
+5. Cleans up all subscriptions and the timeout timer via ~unwind-protect~
 
 If a tool call triggers a permission prompt, a message appears in the echo
 area pointing you to the agent-shell buffer to approve it.
