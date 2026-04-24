@@ -181,10 +181,11 @@ PARAMS may include :buffer to target a specific buffer by name."
                              (message "ob-agent-shell: waiting for permission in %s"
                                       (buffer-name shell-buf))))
                 tokens)
-          (agent-shell-insert :text body :submit t :no-focus t :shell-buffer shell-buf)
-          (while (not done)
-            (unless (sit-for 0.1)
-              (setq err "ob-agent-shell: aborted by user input" done t))))
+          (save-window-excursion
+            (agent-shell-insert :text body :submit t :no-focus t :shell-buffer shell-buf)
+            (while (not done)
+              (unless (sit-for 0.1)
+                (setq err "ob-agent-shell: aborted by user input" done t)))))
       (when timeout-timer (cancel-timer timeout-timer))
       (ob-agent-shell--unsubscribe-all shell-buf tokens))
     (when err (user-error err))
