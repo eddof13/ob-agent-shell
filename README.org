@@ -86,6 +86,27 @@ List three fruits, one per line.
 ,#+end_src
 #+end_src
 
+** Dedicated buffer for org-babel
+
+ob-agent-shell subscribes to ~turn-complete~ events on the target buffer.
+If you are actively using the same buffer (typing queries, waiting for
+responses), a concurrent turn completing first can cause the wrong response
+to be captured.
+
+The safest pattern is to keep a dedicated agent-shell buffer for org-babel
+and leave it otherwise idle:
+
+#+begin_src emacs-lisp
+;; Start a dedicated session and always target it from org files
+M-x agent-shell   ; name it e.g. "ob-babel"
+#+end_src
+
+#+begin_src org
+,#+begin_src agent-shell :buffer ob-babel
+What is the capital of France?
+,#+end_src
+#+end_src
+
 ** Targeting a specific buffer
 
 If you run multiple agent-shell sessions (e.g. different agents or projects),
