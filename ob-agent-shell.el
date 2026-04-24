@@ -15,6 +15,10 @@
 ;; buffer and captures the response as the block result.  Reuses your
 ;; configured agent-shell client rather than requiring a separate AI setup.
 ;;
+;; This version requires agent-shell-query and agent-shell-shell-buffer
+;; from https://github.com/xenodium/agent-shell/pull/NNN.
+;; For a version with no upstream dependency, see the main branch.
+;;
 ;; Usage:
 ;;
 ;;   #+begin_src agent-shell
@@ -41,7 +45,6 @@
 (require 'agent-shell)
 (require 'ob)
 (require 'seq)
-(require 'map)
 
 (defgroup ob-agent-shell nil
   "Org-babel integration for agent-shell."
@@ -59,7 +62,9 @@
   "Return the agent-shell buffer to use, or signal an error.
 If NAME is non-nil, find a live buffer by that name.
 Otherwise return the most recently used agent-shell buffer."
-  (let ((buf (if name (get-buffer name) (seq-first (agent-shell-buffers)))))
+  (let ((buf (if name
+                 (get-buffer name)
+               (agent-shell-shell-buffer :no-error t))))
     (cond
      ((null buf)
       (user-error "No agent-shell buffer%s found; start one with M-x agent-shell"
@@ -67,32 +72,6 @@ Otherwise return the most recently used agent-shell buffer."
      ((not (buffer-live-p buf))
       (user-error "agent-shell buffer %S is no longer live" (buffer-name buf)))
      (t buf))))
-
-;;; Response extraction
-
-(defun ob-agent-shell--extract-response (buf start-pos)
-  "Extract agent response text from BUF added after START-POS.
-Strips the echoed input and shell-maker separator, then strips the
-trailing prompt, returning only the agent response text."
-  (with-current-buffer buf
-    (let ((raw (buffer-substring-no-properties start-pos (point-max)))
-          (prompt-re (map-elt (agent-shell-get-config buf) :shell-prompt-regexp)))
-      (string-trim
-       (if (string-match (regexp-quote "<shell-maker-end-of-prompt>") raw)
-           (let ((after (substring raw (match-end 0))))
-             (if (and prompt-re (string-match (concat prompt-re ".*\\'") after))
-                 (substring after 0 (match-beginning 0))
-               after))
-         raw)))))
-
-;;; Subscription cleanup
-
-(defun ob-agent-shell--unsubscribe-all (shell-buf tokens)
-  "Remove all subscription TOKENS from SHELL-BUF."
-  (with-current-buffer shell-buf
-    (dolist (tok tokens)
-      (when tok
-        (agent-shell-unsubscribe :subscription tok)))))
 
 ;;; Core execution
 
@@ -102,45 +81,16 @@ PARAMS may include :buffer to target a specific buffer by name."
   (let* ((shell-buf (ob-agent-shell--resolve-buffer (cdr (assq :buffer params))))
          (result nil)
          (err nil)
-         (done nil)
-         (start (with-current-buffer shell-buf (point-max)))
-         (tokens nil))
-    (unwind-protect
-        (let ((timeout-timer
-               (run-at-time ob-agent-shell-timeout nil
-                            (lambda ()
-                              (setq err (format "ob-agent-shell: timed out after %ds"
-                                                ob-agent-shell-timeout)
-                                    done t)))))
-          (push (agent-shell-subscribe-to
-                 :shell-buffer shell-buf
-                 :event 'turn-complete
-                 :on-event (lambda (_data)
-                             (setq result (ob-agent-shell--extract-response shell-buf start)
-                                   done t)))
-                tokens)
-          (push (agent-shell-subscribe-to
-                 :shell-buffer shell-buf
-                 :event 'error
-                 :on-event (lambda (data)
-                             (setq err (format "ob-agent-shell error [%s]: %s"
-                                               (map-elt data :code)
-                                               (map-elt data :message))
-                                   done t)))
-                tokens)
-          (push (agent-shell-subscribe-to
-                 :shell-buffer shell-buf
-                 :event 'permission-request
-                 :on-event (lambda (_data)
-                             (message "ob-agent-shell: waiting for permission in %s"
-                                      (buffer-name shell-buf))))
-                tokens)
-          (agent-shell-insert :text body :submit t :no-focus t :shell-buffer shell-buf)
-          (while (not done)
-            (unless (sit-for 0.1)
-              (setq err "ob-agent-shell: aborted by user input" done t)))
-          (cancel-timer timeout-timer))
-      (ob-agent-shell--unsubscribe-all shell-buf tokens))
+         (done nil))
+    (agent-shell-query
+     :text body
+     :shell-buffer shell-buf
+     :timeout ob-agent-shell-timeout
+     :on-complete (lambda (response) (setq result response done t))
+     :on-error    (lambda (msg)      (setq err msg done t)))
+    (while (not done)
+      (unless (sit-for 0.1)
+        (setq err "ob-agent-shell: aborted by user input" done t)))
     (when err (user-error err))
     result))
 
