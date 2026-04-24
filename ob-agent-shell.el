@@ -71,6 +71,38 @@ Otherwise return the most recently used agent-shell buffer."
                   (buffer-name buf)))
      (t buf))))
 
+;;; Response extraction
+
+(defun ob-agent-shell--extract-response (buf)
+  "Extract plain agent response text from BUF, skipping tool-call UI fragments.
+
+Positions to the last interaction, finds the response region, then walks
+it collecting only spans without the `agent-shell-ui-state' property —
+the property agent-shell sets on every tool-call block."
+  (with-current-buffer buf
+    (save-excursion
+      (agent-shell-goto-last-interaction)
+      (when (search-forward "<shell-maker-end-of-prompt>" nil t)
+        (let* ((response-start (point))
+               (prompt-re (map-elt (agent-shell-get-config buf) :shell-prompt-regexp))
+               (response-end (if (and prompt-re
+                                      (re-search-forward prompt-re nil t))
+                                 (match-beginning 0)
+                               (point-max)))
+               (pos response-start)
+               parts)
+          (while (< pos response-end)
+            (if (get-text-property pos 'agent-shell-ui-state)
+                (setq pos (or (next-single-property-change
+                               pos 'agent-shell-ui-state nil response-end)
+                              response-end))
+              (let ((next (or (next-single-property-change
+                               pos 'agent-shell-ui-state nil response-end)
+                              response-end)))
+                (push (buffer-substring-no-properties pos next) parts)
+                (setq pos next))))
+          (string-trim (apply #'concat (nreverse parts))))))))
+
 ;;; Subscription cleanup
 
 (defun ob-agent-shell--unsubscribe-all (shell-buf tokens)
@@ -103,12 +135,10 @@ PARAMS may include :buffer to target a specific buffer by name."
                  :shell-buffer shell-buf
                  :event 'turn-complete
                  :on-event (lambda (_data)
-                             (with-current-buffer shell-buf
-                               (agent-shell-goto-last-interaction)
-                               (if-let ((response (map-elt (agent-shell-interaction-at-point) :response)))
-                                   (setq result response done t)
-                                 (setq err "ob-agent-shell: no response found at interaction point"
-                                       done t)))))
+                             (if-let ((response (ob-agent-shell--extract-response shell-buf)))
+                                 (setq result response done t)
+                               (setq err "ob-agent-shell: no response found"
+                                     done t))))
                 tokens)
           (push (agent-shell-subscribe-to
                  :shell-buffer shell-buf

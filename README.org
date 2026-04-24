@@ -102,9 +102,6 @@ To find buffer names: ~M-x list-buffers~ or ~(mapcar #'buffer-name (agent-shell-
 ~agent-shell-goto-last-interaction~ always jumps to the most recent interaction, so
 concurrent turns in the same buffer can cause the wrong response to be captured.
 
-*Note on tool use:* if the agent invokes tools during a turn (file reads, code
-execution, etc.), the ~#+RESULTS:~ block may contain UI artifacts (~▼ ~, ~▶ ~)
-from collapsed tool call sections.  Plain text responses are not affected.
 
 * Customization
 
@@ -120,8 +117,8 @@ When a block is executed:
 1. Subscribes to ~turn-complete~, ~error~, and ~permission-request~ events
 2. Sends the block body via ~agent-shell-insert~
 3. Waits via ~sit-for~ (non-freezing — display and timers remain live)
-4. On ~turn-complete~, calls ~agent-shell-goto-last-interaction~ and reads the
-   response via ~agent-shell-interaction-at-point~
+4. On ~turn-complete~, walks the response region in the buffer collecting only
+   plain text spans, skipping tool-call UI fragments (~agent-shell-ui-state~)
 5. Cleans up all subscriptions and the timeout timer via ~unwind-protect~
 
 If a tool call triggers a permission prompt, a message appears in the echo
