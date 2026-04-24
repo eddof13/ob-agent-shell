@@ -86,31 +86,9 @@ List three fruits, one per line.
 ,#+end_src
 #+end_src
 
-** Dedicated buffer for org-babel
-
-ob-agent-shell subscribes to ~turn-complete~ events on the target buffer.
-If you are actively using the same buffer (typing queries, waiting for
-responses), a concurrent turn completing first can cause the wrong response
-to be captured.
-
-The safest pattern is to keep a dedicated agent-shell buffer for org-babel
-and leave it otherwise idle:
-
-#+begin_src emacs-lisp
-;; Start a dedicated session and always target it from org files
-M-x agent-shell   ; name it e.g. "ob-babel"
-#+end_src
-
-#+begin_src org
-,#+begin_src agent-shell :buffer ob-babel
-What is the capital of France?
-,#+end_src
-#+end_src
-
 ** Targeting a specific buffer
 
-If you run multiple agent-shell sessions (e.g. different agents or projects),
-use ~:buffer~ to route a block to a specific one:
+Use ~:buffer~ to route a block to a named agent-shell session:
 
 #+begin_src org
 ,#+begin_src agent-shell :buffer *claude-shell*
@@ -118,11 +96,11 @@ Explain this error...
 ,#+end_src
 #+end_src
 
-To find your buffer names: ~M-x list-buffers~ or evaluate:
+To find buffer names: ~M-x list-buffers~ or ~(mapcar #'buffer-name (agent-shell-buffers))~.
 
-#+begin_src emacs-lisp
-(mapcar #'buffer-name (agent-shell-buffers))
-#+end_src
+*Tip:* keep a dedicated idle buffer for org-babel (e.g. always pass ~:buffer ob-babel~).
+ob-agent-shell matches responses by position, so if you actively use the same buffer
+for manual queries a concurrent turn can cause the wrong response to be captured.
 
 * Customization
 
