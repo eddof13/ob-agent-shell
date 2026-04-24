@@ -14,7 +14,7 @@ routes babel blocks through your existing agent-shell session.
 * Requirements
 
 - Emacs 29.1+
-- [[https://github.com/xenodium/agent-shell][agent-shell]] installed and a shell buffer running (~M-x agent-shell~)
+- [[https://github.com/xenodium/agent-shell][agent-shell]] 20260424 or later (requires ~agent-shell-goto-last-interaction~ and ~agent-shell-interaction-at-point~)
 - org-mode 9.6+
 
 * Installation
@@ -99,8 +99,8 @@ Explain this error...
 To find buffer names: ~M-x list-buffers~ or ~(mapcar #'buffer-name (agent-shell-buffers))~.
 
 *Tip:* keep a dedicated idle buffer for org-babel (e.g. always pass ~:buffer ob-babel~).
-ob-agent-shell matches responses by position, so if you actively use the same buffer
-for manual queries a concurrent turn can cause the wrong response to be captured.
+~agent-shell-goto-last-interaction~ always jumps to the most recent interaction, so
+concurrent turns in the same buffer can cause the wrong response to be captured.
 
 * Customization
 
@@ -125,16 +125,12 @@ area pointing you to the agent-shell buffer to approve it.
 
 * Relationship to agent-shell upstream
 
-A companion [[https://github.com/xenodium/agent-shell/pull/][PR to agent-shell]] proposes two additions that would let this
-package (and any other integration) drive agent-shell through a clean public
-API:
+This package uses ~agent-shell-goto-last-interaction~ and
+~agent-shell-interaction-at-point~, both available in agent-shell 20260424+.
 
-- ~agent-shell-shell-buffer~ — public wrapper around the internal buffer
-  resolver
-- ~agent-shell-query~ — programmatic async query function with cancel support
-
-If those land upstream, the core of this package simplifies significantly.
-A branch [[https://github.com/eddof13/ob-agent-shell/pull/1][showing that simplified version]] is available as a PR on this repo.
+A companion [[https://github.com/xenodium/agent-shell/pull/536][PR #536]] proposes ~agent-shell-shell-buffer~, a public wrapper
+around the internal buffer resolver that this package currently reaches
+into via ~agent-shell-buffers~.
 
 * Contributing
 
