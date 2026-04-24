@@ -75,6 +75,17 @@ to-do lists, planning projects, and authoring documents.
 | ~:exports both~  | Include both the source block and result on export.      |
 |                  | This is the default.                                     |
 
+** Plain text results
+
+Use ~:results raw~ to omit the leading ~: ~ prefix (useful when piping output
+to other blocks or tangling):
+
+#+begin_src org
+,#+begin_src agent-shell :results raw
+List three fruits, one per line.
+,#+end_src
+#+end_src
+
 ** Targeting a specific buffer
 
 If you run multiple agent-shell sessions (e.g. different agents or projects),
@@ -95,8 +106,8 @@ To find your buffer names: ~M-x list-buffers~ or evaluate:
 * Customization
 
 #+begin_src emacs-lisp
-;; Seconds to wait for a response before timing out (default: 120)
-(setq ob-agent-shell-timeout 120)
+;; Seconds to wait for a response before timing out (default: 30)
+(setq ob-agent-shell-timeout 30)
 #+end_src
 
 * How it works
