@@ -4,7 +4,7 @@
 
 ;; Author: Eddie Jesinsky <eddie@jesinsky.com>
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "29.1") (agent-shell "0.1") (org "9.6"))
+;; Package-Requires: ((emacs "29.1") (agent-shell "20260424") (org "9.6"))
 ;; Keywords: ai, org, babel
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 ;; URL: https://github.com/eddof13/ob-agent-shell
