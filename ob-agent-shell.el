@@ -89,14 +89,16 @@ PARAMS may include :buffer to target a specific buffer by name."
          (result nil)
          (err nil)
          (done nil)
-         (tokens nil))
+         (tokens nil)
+         (timeout-timer nil))
     (unwind-protect
-        (let ((timeout-timer
-               (run-at-time ob-agent-shell-timeout nil
-                            (lambda ()
-                              (setq err (format "ob-agent-shell: timed out after %ds"
-                                                ob-agent-shell-timeout)
-                                    done t)))))
+        (progn
+          (setq timeout-timer
+                (run-at-time ob-agent-shell-timeout nil
+                             (lambda ()
+                               (setq err (format "ob-agent-shell: timed out after %ds"
+                                                 ob-agent-shell-timeout)
+                                     done t))))
           (push (agent-shell-subscribe-to
                  :shell-buffer shell-buf
                  :event 'turn-complete
@@ -124,8 +126,8 @@ PARAMS may include :buffer to target a specific buffer by name."
           (agent-shell-insert :text body :submit t :no-focus t :shell-buffer shell-buf)
           (while (not done)
             (unless (sit-for 0.1)
-              (setq err "ob-agent-shell: aborted by user input" done t)))
-          (cancel-timer timeout-timer))
+              (setq err "ob-agent-shell: aborted by user input" done t))))
+      (when timeout-timer (cancel-timer timeout-timer))
       (ob-agent-shell--unsubscribe-all shell-buf tokens))
     (when err (user-error err))
     result))
