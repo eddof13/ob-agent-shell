@@ -48,7 +48,7 @@
   :group 'org-babel
   :prefix "ob-agent-shell-")
 
-(defcustom ob-agent-shell-timeout 120
+(defcustom ob-agent-shell-timeout 30
   "Seconds to wait for agent-shell to respond before signaling an error."
   :type 'integer
   :group 'ob-agent-shell)
