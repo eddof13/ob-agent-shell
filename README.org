@@ -151,8 +151,12 @@ area pointing you to the agent-shell buffer to approve it.
 
 * Relationship to agent-shell upstream
 
-This package uses ~agent-shell-goto-last-interaction~ and
-~agent-shell-interaction-at-point~, both available in agent-shell 20260424+.
+This package depends on three public APIs added to agent-shell in version
+20260424.1630:
+
+- ~agent-shell-shell-buffer~ — public buffer resolver
+- ~agent-shell-goto-last-interaction~ — navigate to the last interaction
+- ~agent-shell-interaction-at-point~ — extract the interaction at point
 
 * Contributing
 
