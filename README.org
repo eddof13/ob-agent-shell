@@ -177,6 +177,21 @@ This package depends on three public APIs added to agent-shell in version
 - ~agent-shell-goto-last-interaction~ — navigate to the last interaction
 - ~agent-shell-interaction-at-point~ — extract the interaction at point
 
+* Known issues
+
+** Org fontification error at source block
+
+Org mode tries to apply syntax highlighting to ~agent-shell~ blocks using a
+corresponding major mode, which doesn't exist. This produces a ~Org mode
+fontification error~ message. Fix it by mapping the language to ~text-mode~:
+
+#+begin_src emacs-lisp
+(add-to-list 'org-src-lang-modes '("agent-shell" . text))
+#+end_src
+
+If you use the ~use-package~ installation above, add this line inside the
+~:config~ block.
+
 * Contributing
 
 Bug reports and patches welcome. Please open an issue first for anything
