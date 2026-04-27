@@ -70,10 +70,29 @@ to-do lists, planning projects, and authoring documents.
 |------------------+----------------------------------------------------------|
 | ~:buffer NAME~   | Use a specific agent-shell buffer by name. Defaults to   |
 |                  | the most recently used agent-shell buffer.               |
+| ~:timeout N~     | Override ~ob-agent-shell-timeout~ for this block only.   |
+|                  | N is seconds. Useful for long-running prompts without    |
+|                  | raising the global default.                              |
 | ~:results raw~   | Insert result as plain text without the leading ~: ~     |
 |                  | prefix on each line.                                     |
 | ~:exports both~  | Include both the source block and result on export.      |
 |                  | This is the default.                                     |
+
+** Per-block timeout
+
+Use ~:timeout N~ to raise the timeout for a single block without changing the
+global default.  Useful for prompts that require significant processing time,
+like reading a full PDF before answering questions:
+
+#+begin_src org
+,#+name: load-book
+,#+begin_src agent-shell :timeout 120
+Read the PDF at ~/Downloads/book.pdf in full before responding.
+,#+end_src
+#+end_src
+
+The global ~ob-agent-shell-timeout~ (default 30s) still applies to all other
+blocks.
 
 ** Plain text results
 
