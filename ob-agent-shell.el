@@ -34,6 +34,11 @@
 ;;   :buffer BUFFER-NAME  Use a specific agent-shell buffer by name.
 ;;                        Defaults to the most recently used shell buffer.
 ;;
+;;   :timeout N           Override `ob-agent-shell-timeout' for this block.
+;;                        N is a number of seconds.  Useful for long-running
+;;                        prompts (e.g. reading a full PDF) without raising
+;;                        the global default.
+;;
 ;;   :results raw         Omit the leading ": " prefix on each result line.
 
 ;;; Code:
@@ -140,8 +145,10 @@ Requires `ob-agent-shell-convert-markdown' to be non-nil and pandoc on PATH."
 
 (defun org-babel-execute:agent-shell (body params)
   "Execute BODY by sending it to the active agent-shell buffer.
-PARAMS may include :buffer to target a specific buffer by name."
+PARAMS may include :buffer to target a specific buffer by name and
+:timeout to override `ob-agent-shell-timeout' for this block."
   (let* ((shell-buf (ob-agent-shell--resolve-buffer (cdr (assq :buffer params))))
+         (timeout (or (cdr (assq :timeout params)) ob-agent-shell-timeout))
          (result nil)
          (err nil)
          (done nil)
@@ -150,10 +157,10 @@ PARAMS may include :buffer to target a specific buffer by name."
     (unwind-protect
         (progn
           (setq timeout-timer
-                (run-at-time ob-agent-shell-timeout nil
+                (run-at-time timeout nil
                              (lambda ()
                                (setq err (format "ob-agent-shell: timed out after %ds"
-                                                 ob-agent-shell-timeout)
+                                                 timeout)
                                      done t))))
           (push (agent-shell-subscribe-to
                  :shell-buffer shell-buf
