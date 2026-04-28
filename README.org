@@ -96,11 +96,11 @@ On the first block execution, the session name is bound to the currently active
 agent-shell buffer. Every subsequent block with the same name routes to that
 same buffer, preserving conversation context across all blocks.
 
-A natural pattern for interactive book or document notes: use the file's unique
-identifier as the session name so each note gets its own isolated shell:
+A natural pattern for interactive book or document notes: use a short,
+descriptive session name so each file gets its own isolated shell:
 
 #+begin_src org
-,#+PROPERTY: header-args:agent-shell :session 20260426T214859 :results raw
+,#+PROPERTY: header-args:agent-shell :session fiume-crisis :results raw
 
 ,#+name: load-book
 ,#+begin_src agent-shell :timeout 120
