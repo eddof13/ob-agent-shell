@@ -32,7 +32,14 @@
 ;; Header args:
 ;;
 ;;   :buffer BUFFER-NAME  Use a specific agent-shell buffer by name.
-;;                        Defaults to the most recently used shell buffer.
+;;                        Takes priority over :session.
+;;
+;;   :session NAME        Route all blocks sharing NAME to the same
+;;                        agent-shell buffer.  On first use, binds NAME
+;;                        to the currently active buffer; subsequent
+;;                        blocks reuse it.  Set this file-wide via
+;;                        #+PROPERTY: header-args:agent-shell :session ID
+;;                        to give every block in a file its own shell.
 ;;
 ;;   :timeout N           Override `ob-agent-shell-timeout' for this block.
 ;;                        N is a number of seconds.  Useful for long-running
@@ -65,21 +72,44 @@ Requires pandoc to be installed and available on PATH."
 
 ;;; Buffer resolution
 
-(defun ob-agent-shell--resolve-buffer (&optional name)
+(defvar ob-agent-shell--sessions (make-hash-table :test #'equal)
+  "Registry mapping session names to their agent-shell buffers.
+Entries are added on first use of a :session name and removed when
+the associated buffer is no longer live.")
+
+(defun ob-agent-shell--resolve-session (name)
+  "Return the agent-shell buffer for session NAME, registering it if new.
+On first call for NAME, binds NAME to the currently active agent-shell
+buffer.  On subsequent calls, returns the same buffer as long as it
+remains live.  Signals an error if no active buffer can be found."
+  (let ((buf (gethash name ob-agent-shell--sessions)))
+    (if (and buf (buffer-live-p buf) (process-live-p (get-buffer-process buf)))
+        buf
+      (when buf
+        (remhash name ob-agent-shell--sessions))
+      (let ((active (agent-shell-shell-buffer :no-error t)))
+        (unless active
+          (user-error "No agent-shell buffer found for session %S; start one with M-x agent-shell"
+                      name))
+        (puthash name active ob-agent-shell--sessions)
+        active))))
+
+(defun ob-agent-shell--resolve-buffer (&optional name session)
   "Return the agent-shell buffer to use, or signal an error.
-If NAME is non-nil, find a live buffer by that name.
-Otherwise return the most recently used agent-shell buffer."
-  (let ((buf (if name (get-buffer name) (agent-shell-shell-buffer :no-error t))))
-    (cond
-     ((null buf)
-      (user-error "No agent-shell buffer%s found; start one with M-x agent-shell"
-                  (if name (format " named %S" name) "")))
-     ((not (buffer-live-p buf))
-      (user-error "agent-shell buffer %S is no longer live" (buffer-name buf)))
-     ((not (process-live-p (get-buffer-process buf)))
-      (user-error "agent-shell buffer %S has no live process; restart with M-x agent-shell"
-                  (buffer-name buf)))
-     (t buf))))
+Resolution order: :buffer NAME, then :session SESSION, then most recently used."
+  (if (and session (not name))
+      (ob-agent-shell--resolve-session session)
+    (let ((buf (if name (get-buffer name) (agent-shell-shell-buffer :no-error t))))
+      (cond
+       ((null buf)
+        (user-error "No agent-shell buffer%s found; start one with M-x agent-shell"
+                    (if name (format " named %S" name) "")))
+       ((not (buffer-live-p buf))
+        (user-error "agent-shell buffer %S is no longer live" (buffer-name buf)))
+       ((not (process-live-p (get-buffer-process buf)))
+        (user-error "agent-shell buffer %S has no live process; restart with M-x agent-shell"
+                    (buffer-name buf)))
+       (t buf)))))
 
 ;;; Response extraction
 
@@ -147,7 +177,8 @@ Requires `ob-agent-shell-convert-markdown' to be non-nil and pandoc on PATH."
   "Execute BODY by sending it to the active agent-shell buffer.
 PARAMS may include :buffer to target a specific buffer by name and
 :timeout to override `ob-agent-shell-timeout' for this block."
-  (let* ((shell-buf (ob-agent-shell--resolve-buffer (cdr (assq :buffer params))))
+  (let* ((shell-buf (ob-agent-shell--resolve-buffer (cdr (assq :buffer params))
+                                                    (cdr (assq :session params))))
          (timeout (or (cdr (assq :timeout params)) ob-agent-shell-timeout))
          (result nil)
          (err nil)
@@ -205,8 +236,8 @@ PARAMS may include :buffer to target a specific buffer by name and
   "Default header arguments for agent-shell source blocks.")
 
 (defun org-babel-prep-session:agent-shell (_session _params)
-  "Sessions are not supported for agent-shell blocks."
-  (user-error "ob-agent-shell does not support sessions"))
+  "ob-agent-shell uses :session for buffer routing, not interactive sessions."
+  (user-error "ob-agent-shell does not open interactive sessions; use :session to route blocks to a named buffer"))
 
 (provide 'ob-agent-shell)
 ;;; ob-agent-shell.el ends here
