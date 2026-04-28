@@ -68,8 +68,12 @@ to-do lists, planning projects, and authoring documents.
 
 | Argument         | Description                                              |
 |------------------+----------------------------------------------------------|
-| ~:buffer NAME~   | Use a specific agent-shell buffer by name. Defaults to   |
-|                  | the most recently used agent-shell buffer.               |
+| ~:session NAME~  | Route all blocks sharing NAME to the same agent-shell    |
+|                  | buffer. On first use, NAME is bound to the currently     |
+|                  | active buffer; subsequent blocks reuse it as long as it  |
+|                  | remains live. Set file-wide via ~#+PROPERTY~.            |
+| ~:buffer NAME~   | Use a specific agent-shell buffer by name. Takes         |
+|                  | priority over ~:session~.                                |
 | ~:timeout N~     | Override ~ob-agent-shell-timeout~ for this block only.   |
 |                  | N is seconds. Useful for long-running prompts without    |
 |                  | raising the global default.                              |
@@ -77,6 +81,44 @@ to-do lists, planning projects, and authoring documents.
 |                  | prefix on each line.                                     |
 | ~:exports both~  | Include both the source block and result on export.      |
 |                  | This is the default.                                     |
+
+** Persistent sessions per file
+
+Use ~:session~ to give all blocks in a file their own shared shell — analogous
+to a Jupyter kernel per notebook. Set it once via ~#+PROPERTY~ and every block
+in the file inherits it:
+
+#+begin_src org
+,#+PROPERTY: header-args:agent-shell :session my-session :results raw
+#+end_src
+
+On the first block execution, the session name is bound to the currently active
+agent-shell buffer. Every subsequent block with the same name routes to that
+same buffer, preserving conversation context across all blocks.
+
+A natural pattern for interactive book or document notes: use the file's unique
+identifier as the session name so each note gets its own isolated shell:
+
+#+begin_src org
+,#+PROPERTY: header-args:agent-shell :session 20260426T214859 :results raw
+
+,#+name: load-book
+,#+begin_src agent-shell :timeout 120
+The book for this session is at: ~/Downloads/my-book.pdf
+Read the PDF in full before responding to any subsequent prompts.
+,#+end_src
+
+,#+begin_src agent-shell
+Summarize the author's central argument in two paragraphs.
+,#+end_src
+#+end_src
+
+If the session buffer dies (e.g. after restarting Emacs), the stale entry is
+evicted automatically and the next block re-binds the name to whatever buffer
+is currently active.
+
+Individual blocks can still override session routing with ~:buffer~ — ~:buffer~
+always takes priority over ~:session~.
 
 ** Per-block timeout
 
