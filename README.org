@@ -100,7 +100,7 @@ A natural pattern for interactive book or document notes: use a short,
 descriptive session name so each file gets its own isolated shell:
 
 #+begin_src org
-,#+PROPERTY: header-args:agent-shell :session fiume-crisis :results raw
+,#+PROPERTY: header-args:agent-shell :session my-book :results raw
 
 ,#+name: load-book
 ,#+begin_src agent-shell :timeout 120
