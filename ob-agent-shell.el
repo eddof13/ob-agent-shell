@@ -255,7 +255,7 @@ PARAMS may include :buffer to target a specific buffer by name and
 ;;; Org-babel boilerplate
 
 (defvar org-babel-default-header-args:agent-shell
-  '((:results . "output") (:exports . "both"))
+  '((:results . "output replace") (:exports . "both"))
   "Default header arguments for agent-shell source blocks.")
 
 (defun org-babel-prep-session:agent-shell (_session _params)
