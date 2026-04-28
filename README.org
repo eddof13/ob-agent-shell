@@ -50,7 +50,9 @@ What is the capital of France?
 ,#+end_src
 
 ,#+RESULTS:
-: Paris.
+:RESULTS:
+Paris.
+:END:
 #+end_src
 
 Multiline queries work as expected:
@@ -77,8 +79,10 @@ to-do lists, planning projects, and authoring documents.
 | ~:timeout N~     | Override ~ob-agent-shell-timeout~ for this block only.   |
 |                  | N is seconds. Useful for long-running prompts without    |
 |                  | raising the global default.                              |
-| ~:results raw~   | Insert result as plain text without the leading ~: ~     |
-|                  | prefix on each line.                                     |
+| ~:results drawer~ | Wrap result in ~:RESULTS:...:END:~ tokens so org-babel   |
+|                  | can reliably find and replace it on re-run. Default.     |
+| ~:results raw~   | Insert result as raw org without a drawer wrapper.       |
+|                  | Results may append instead of replace on re-run.         |
 | ~:exports both~  | Include both the source block and result on export.      |
 |                  | This is the default.                                     |
 
@@ -89,7 +93,7 @@ to a Jupyter kernel per notebook. Set it once via ~#+PROPERTY~ and every block
 in the file inherits it:
 
 #+begin_src org
-,#+PROPERTY: header-args:agent-shell :session my-session :results raw
+,#+PROPERTY: header-args:agent-shell :session my-session :results drawer
 #+end_src
 
 On the first block execution, the session name is bound to the currently active
@@ -100,7 +104,7 @@ A natural pattern for interactive book or document notes: use a short,
 descriptive session name so each file gets its own isolated shell:
 
 #+begin_src org
-,#+PROPERTY: header-args:agent-shell :session my-book :results raw
+,#+PROPERTY: header-args:agent-shell :session my-book :results drawer
 
 ,#+name: load-book
 ,#+begin_src agent-shell :timeout 120
@@ -136,14 +140,31 @@ Read the PDF at ~/Downloads/book.pdf in full before responding.
 The global ~ob-agent-shell-timeout~ (default 30s) still applies to all other
 blocks.
 
-** Plain text results
+** Result format
 
-Use ~:results raw~ to omit the leading ~: ~ prefix (useful when piping output
-to other blocks or tangling):
+Results are wrapped in ~:RESULTS:...:END:~ by default (~:results output drawer~),
+which lets org-babel reliably find and replace them on re-run:
+
+#+begin_src org
+,#+begin_src agent-shell
+List three fruits, one per line.
+,#+end_src
+
+,#+RESULTS:
+:RESULTS:
+Apple
+Banana
+Cherry
+:END:
+#+end_src
+
+Use ~:results raw~ to insert the result as plain org text without a drawer.
+This is useful when you want org headings in the results to appear in the
+outline tree, but note that re-running the block may append instead of replace:
 
 #+begin_src org
 ,#+begin_src agent-shell :results raw
-List three fruits, one per line.
+Summarize in one paragraph with a * Heading.
 ,#+end_src
 #+end_src
 
