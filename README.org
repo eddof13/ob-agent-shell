@@ -81,7 +81,7 @@ to-do lists, planning projects, and authoring documents.
 |                  | raising the global default.                              |
 | ~:results drawer~ | Wrap result in ~:RESULTS:...:END:~ tokens so org-babel   |
 |                  | can reliably find and replace it on re-run. Default.     |
-| ~:results raw~   | Insert result as raw org without a drawer wrapper.       |
+| ~:results raw~   | Insert result as raw text without a drawer wrapper.      |
 |                  | Results may append instead of replace on re-run.         |
 | ~:exports both~  | Include both the source block and result on export.      |
 |                  | This is the default.                                     |
@@ -142,6 +142,10 @@ blocks.
 
 ** Result format
 
+Agent responses are returned as *markdown* by default — headers are ~##~, code
+blocks are surrounded by triple backticks, and so on.  See [[*Markdown to org conversion][Markdown to org
+conversion]] if you want pandoc to translate that into native org syntax.
+
 Results are wrapped in ~:RESULTS:...:END:~ by default (~:results output drawer~),
 which lets org-babel reliably find and replace them on re-run:
 
@@ -158,9 +162,8 @@ Cherry
 :END:
 #+end_src
 
-Use ~:results raw~ to insert the result as plain org text without a drawer.
-This is useful when you want org headings in the results to appear in the
-outline tree, but note that re-running the block may append instead of replace:
+Use ~:results raw~ to insert the result as plain text without a drawer.
+Note that re-running the block may append instead of replace:
 
 #+begin_src org
 ,#+begin_src agent-shell :results raw
@@ -191,17 +194,19 @@ concurrent turns in the same buffer can cause the wrong response to be captured.
 ;; Seconds to wait for a response before timing out (default: 30)
 (setq ob-agent-shell-timeout 30)
 
-;; Convert markdown responses to org-mode format via pandoc (default: nil)
-;; Requires pandoc: brew install pandoc
+;; Convert markdown responses to org format via pandoc (default: nil — markdown is inserted as-is)
+;; Requires pandoc on your PATH: brew install pandoc
 (setq ob-agent-shell-convert-markdown t)
 #+end_src
 
 ** Markdown to org conversion
 
-Agent responses are markdown by default.  With ~ob-agent-shell-convert-markdown~
-enabled, pandoc converts responses to org-mode syntax — headers become ~*~
-outline levels, code blocks become ~#+begin_src~, links become ~[[url][text]]~,
-and so on.
+Agent responses are markdown by default.  Enable ~ob-agent-shell-convert-markdown~
+to have pandoc automatically translate each response into org syntax — headers
+become ~*~ outline levels, code blocks become ~#+begin_src~, links become
+~[[url][text]]~, and so on.  Requires pandoc on your PATH (~brew install pandoc~).
+
+Without conversion (default), the raw markdown is inserted:
 
 #+begin_src org
 ,#+begin_src agent-shell
@@ -209,12 +214,32 @@ What is the syntax for a for loop in Python?
 ,#+end_src
 
 ,#+RESULTS:
+:RESULTS:
+## Python for loop
+
+```python
+for i in range(10):
+    print(i)
+```
+:END:
+#+end_src
+
+With ~(setq ob-agent-shell-convert-markdown t)~, pandoc converts that to org:
+
+#+begin_src org
+,#+begin_src agent-shell
+What is the syntax for a for loop in Python?
+,#+end_src
+
+,#+RESULTS:
+:RESULTS:
 ,* Python for loop
 
 ,#+begin_src python
 for i in range(10):
     print(i)
 ,#+end_src
+:END:
 #+end_src
 
 * How it works
