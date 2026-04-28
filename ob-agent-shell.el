@@ -183,7 +183,7 @@ Requires `ob-agent-shell-convert-markdown' to be non-nil and pandoc on PATH."
 PARAMS may include :buffer to target a specific buffer by name and
 :timeout to override `ob-agent-shell-timeout' for this block."
   (if (string-blank-p body)
-      ""
+      (progn (org-babel-remove-result) nil)
     (let* ((shell-buf (ob-agent-shell--resolve-buffer (cdr (assq :buffer params))
                                                       (cdr (assq :session params))))
            (timeout (or (cdr (assq :timeout params)) ob-agent-shell-timeout))
