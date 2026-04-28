@@ -3,7 +3,7 @@
 ;; Copyright (C) 2026 Eddie Jesinsky
 
 ;; Author: Eddie Jesinsky <eddie@jesinsky.com>
-;; Version: 0.1.0
+;; Version: 0.2.0
 ;; Package-Requires: ((emacs "29.1") (agent-shell "20260424.1630") (org "9.6"))
 ;; Keywords: ai, org, babel
 ;; SPDX-License-Identifier: GPL-3.0-or-later
