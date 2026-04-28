@@ -182,73 +182,75 @@ Requires `ob-agent-shell-convert-markdown' to be non-nil and pandoc on PATH."
   "Execute BODY by sending it to the active agent-shell buffer.
 PARAMS may include :buffer to target a specific buffer by name and
 :timeout to override `ob-agent-shell-timeout' for this block."
-  (let* ((shell-buf (ob-agent-shell--resolve-buffer (cdr (assq :buffer params))
-                                                    (cdr (assq :session params))))
-         (timeout (or (cdr (assq :timeout params)) ob-agent-shell-timeout))
-         (result nil)
-         (err nil)
-         (done nil)
-         (waiting-for-permission nil)
-         (tokens nil)
-         (timeout-timer nil))
-    (unwind-protect
-        (progn
-          (setq timeout-timer
-                (run-at-time timeout nil
-                             (lambda ()
-                               (unless waiting-for-permission
-                                 (setq err (format "ob-agent-shell: timed out after %ds"
-                                                   timeout)
-                                       done t)))))
-          (push (agent-shell-subscribe-to
-                 :shell-buffer shell-buf
-                 :event 'turn-complete
-                 :on-event (lambda (_data)
-                             (let ((was-waiting waiting-for-permission))
-                               (setq waiting-for-permission nil)
-                               (if-let ((response (ob-agent-shell--extract-response shell-buf)))
-                                   (setq result (ob-agent-shell--maybe-convert response)
-                                         done t)
-                                 (setq err "ob-agent-shell: no response found"
-                                       done t))
-                               (when was-waiting
-                                 (run-at-time 0 nil #'ob-agent-shell--exit-recursive-edit-if-active)))))
-                tokens)
-          (push (agent-shell-subscribe-to
-                 :shell-buffer shell-buf
-                 :event 'error
-                 :on-event (lambda (data)
-                             (let ((was-waiting waiting-for-permission))
-                               (setq waiting-for-permission nil
-                                     err (format "ob-agent-shell error [%s]: %s"
-                                                 (map-elt data :code)
-                                                 (map-elt data :message))
-                                     done t)
-                               (when was-waiting
-                                 (run-at-time 0 nil #'ob-agent-shell--exit-recursive-edit-if-active)))))
-                tokens)
-          (push (agent-shell-subscribe-to
-                 :shell-buffer shell-buf
-                 :event 'permission-request
-                 :on-event (lambda (_data)
-                             (setq waiting-for-permission t)
-                             (pop-to-buffer shell-buf)
-                             (condition-case nil
-                                 (unless done
-                                   (recursive-edit))
-                               (quit
-                                (setq err "ob-agent-shell: aborted by user" done t)))
-                             (setq waiting-for-permission nil)))
-                tokens)
-          (save-window-excursion
-            (agent-shell-insert :text body :submit t :no-focus t :shell-buffer shell-buf)
-            (while (not done)
-              (unless (sit-for 0.1)
-                (setq err "ob-agent-shell: aborted by user input" done t)))))
-      (when timeout-timer (cancel-timer timeout-timer))
-      (ob-agent-shell--unsubscribe-all shell-buf tokens))
-    (when err (user-error err))
-    result))
+  (if (string-blank-p body)
+      ""
+    (let* ((shell-buf (ob-agent-shell--resolve-buffer (cdr (assq :buffer params))
+                                                      (cdr (assq :session params))))
+           (timeout (or (cdr (assq :timeout params)) ob-agent-shell-timeout))
+           (result nil)
+           (err nil)
+           (done nil)
+           (waiting-for-permission nil)
+           (tokens nil)
+           (timeout-timer nil))
+      (unwind-protect
+          (progn
+            (setq timeout-timer
+                  (run-at-time timeout nil
+                               (lambda ()
+                                 (unless waiting-for-permission
+                                   (setq err (format "ob-agent-shell: timed out after %ds"
+                                                     timeout)
+                                         done t)))))
+            (push (agent-shell-subscribe-to
+                   :shell-buffer shell-buf
+                   :event 'turn-complete
+                   :on-event (lambda (_data)
+                               (let ((was-waiting waiting-for-permission))
+                                 (setq waiting-for-permission nil)
+                                 (if-let ((response (ob-agent-shell--extract-response shell-buf)))
+                                     (setq result (ob-agent-shell--maybe-convert response)
+                                           done t)
+                                   (setq err "ob-agent-shell: no response found"
+                                         done t))
+                                 (when was-waiting
+                                   (run-at-time 0 nil #'ob-agent-shell--exit-recursive-edit-if-active)))))
+                  tokens)
+            (push (agent-shell-subscribe-to
+                   :shell-buffer shell-buf
+                   :event 'error
+                   :on-event (lambda (data)
+                               (let ((was-waiting waiting-for-permission))
+                                 (setq waiting-for-permission nil
+                                       err (format "ob-agent-shell error [%s]: %s"
+                                                   (map-elt data :code)
+                                                   (map-elt data :message))
+                                       done t)
+                                 (when was-waiting
+                                   (run-at-time 0 nil #'ob-agent-shell--exit-recursive-edit-if-active)))))
+                  tokens)
+            (push (agent-shell-subscribe-to
+                   :shell-buffer shell-buf
+                   :event 'permission-request
+                   :on-event (lambda (_data)
+                               (setq waiting-for-permission t)
+                               (pop-to-buffer shell-buf)
+                               (condition-case nil
+                                   (unless done
+                                     (recursive-edit))
+                                 (quit
+                                  (setq err "ob-agent-shell: aborted by user" done t)))
+                               (setq waiting-for-permission nil)))
+                  tokens)
+            (save-window-excursion
+              (agent-shell-insert :text body :submit t :no-focus t :shell-buffer shell-buf)
+              (while (not done)
+                (unless (sit-for 0.1)
+                  (setq err "ob-agent-shell: aborted by user input" done t)))))
+        (when timeout-timer (cancel-timer timeout-timer))
+        (ob-agent-shell--unsubscribe-all shell-buf tokens))
+      (when err (user-error err))
+      result)))
 
 ;;; Org-babel boilerplate
 
