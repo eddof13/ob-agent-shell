@@ -4,10 +4,25 @@
 
 ;; Author: Eddie Jesinsky <eddie@jesinsky.com>
 ;; Version: 0.2.0
-;; Package-Requires: ((emacs "29.1") (agent-shell "20260424.1630") (org "9.6"))
-;; Keywords: ai, org, babel
-;; SPDX-License-Identifier: GPL-3.0-or-later
+;; Package-Requires: ((emacs "29.1") (agent-shell "0.50.1") (org "9.6"))
+;; Keywords: tools, convenience, outlines
 ;; URL: https://github.com/eddof13/ob-agent-shell
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
+;; This file is not part of GNU Emacs.
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -65,7 +80,7 @@
   :group 'ob-agent-shell)
 
 (defcustom ob-agent-shell-convert-markdown nil
-  "When non-nil, convert markdown responses to org-mode format via pandoc.
+  "When non-nil, convert markdown responses to `org-mode' format via pandoc.
 Requires pandoc to be installed and available on PATH."
   :type 'boolean
   :group 'ob-agent-shell)
@@ -105,9 +120,9 @@ Resolution order: :buffer NAME, then :session SESSION, then most recently used."
         (user-error "No agent-shell buffer%s found; start one with M-x agent-shell"
                     (if name (format " named %S" name) "")))
        ((not (buffer-live-p buf))
-        (user-error "agent-shell buffer %S is no longer live" (buffer-name buf)))
+        (user-error "Agent-shell buffer %S is no longer live" (buffer-name buf)))
        ((not (process-live-p (get-buffer-process buf)))
-        (user-error "agent-shell buffer %S has no live process; restart with M-x agent-shell"
+        (user-error "Agent-shell buffer %S has no live process; restart with M-x agent-shell"
                     (buffer-name buf)))
        (t buf)))))
 
@@ -151,7 +166,7 @@ strips any spans carrying the `agent-shell-ui-state' text property
 ;;; Markdown conversion
 
 (defun ob-agent-shell--maybe-convert (text)
-  "Convert TEXT from markdown to org-mode format if configured to do so.
+  "Convert TEXT from markdown to `org-mode' format if configured to do so.
 Requires `ob-agent-shell-convert-markdown' to be non-nil and pandoc on PATH."
   (if (and ob-agent-shell-convert-markdown (executable-find "pandoc"))
       (with-temp-buffer
@@ -259,8 +274,8 @@ PARAMS may include :buffer to target a specific buffer by name and
   "Default header arguments for agent-shell source blocks.")
 
 (defun org-babel-prep-session:agent-shell (_session _params)
-  "ob-agent-shell uses :session for buffer routing, not interactive sessions."
-  (user-error "ob-agent-shell does not open interactive sessions; use :session to route blocks to a named buffer"))
+  "Use :session for buffer routing, not interactive sessions."
+  (user-error "Ob-agent-shell does not open interactive sessions; use :session to route blocks to a named buffer"))
 
 (provide 'ob-agent-shell)
 ;;; ob-agent-shell.el ends here

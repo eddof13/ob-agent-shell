@@ -14,19 +14,40 @@ routes babel blocks through your existing agent-shell session.
 * Requirements
 
 - Emacs 29.1+
-- [[https://github.com/xenodium/agent-shell][agent-shell]] 20260424 or later (requires ~agent-shell-goto-last-interaction~ and ~agent-shell-interaction-at-point~)
+- [[https://github.com/xenodium/agent-shell][agent-shell]] 0.50.1 or later (requires ~agent-shell-goto-last-interaction~ and ~agent-shell-interaction-at-point~)
 - org-mode 9.6+
 
 * Installation
 
-** Manual
+** MELPA (recommended)
 
-Clone this repo and add to your load path:
+Ensure MELPA is in ~package-archives~, then:
 
 #+begin_src emacs-lisp
-(add-to-list 'load-path "/path/to/ob-agent-shell")
-(require 'ob-agent-shell)
-(add-to-list 'org-babel-load-languages '(agent-shell . t))
+(use-package ob-agent-shell
+  :ensure t
+  :after (agent-shell org)
+  :config
+  (add-to-list 'org-babel-load-languages '(agent-shell . t))
+  (org-babel-do-load-languages 'org-babel-load-languages
+                               org-babel-load-languages)
+  ;; Avoid org fontification error for agent-shell blocks
+  (add-to-list 'org-src-lang-modes '("agent-shell" . text)))
+#+end_src
+
+Or with ~M-x package-install RET ob-agent-shell RET~, then ~(require 'ob-agent-shell)~ and load the babel language as above.
+
+** use-package + package-vc (pre-MELPA / bleeding edge)
+
+#+begin_src emacs-lisp
+(use-package ob-agent-shell
+  :vc (:url "https://github.com/eddof13/ob-agent-shell")
+  :after (agent-shell org)
+  :config
+  (add-to-list 'org-babel-load-languages '(agent-shell . t))
+  (org-babel-do-load-languages 'org-babel-load-languages
+                               org-babel-load-languages)
+  (add-to-list 'org-src-lang-modes '("agent-shell" . text)))
 #+end_src
 
 ** use-package + straight
@@ -36,7 +57,23 @@ Clone this repo and add to your load path:
   :straight (:host github :repo "eddof13/ob-agent-shell")
   :after (agent-shell org)
   :config
-  (add-to-list 'org-babel-load-languages '(agent-shell . t)))
+  (add-to-list 'org-babel-load-languages '(agent-shell . t))
+  (org-babel-do-load-languages 'org-babel-load-languages
+                               org-babel-load-languages)
+  (add-to-list 'org-src-lang-modes '("agent-shell" . text)))
+#+end_src
+
+** Manual
+
+Clone this repo and add to your load path:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "/path/to/ob-agent-shell")
+(require 'ob-agent-shell)
+(add-to-list 'org-babel-load-languages '(agent-shell . t))
+(org-babel-do-load-languages 'org-babel-load-languages
+                             org-babel-load-languages)
+(add-to-list 'org-src-lang-modes '("agent-shell" . text))
 #+end_src
 
 * Usage
@@ -258,8 +295,8 @@ area pointing you to the agent-shell buffer to approve it.
 
 * Relationship to agent-shell upstream
 
-This package depends on three public APIs added to agent-shell in version
-20260424.1630:
+This package depends on three public APIs added to agent-shell in 0.50.1
+(first released in the v0.52.2 tag line):
 
 - ~agent-shell-shell-buffer~ — public buffer resolver
 - ~agent-shell-goto-last-interaction~ — navigate to the last interaction
@@ -279,6 +316,10 @@ fontification error~ message. Fix it by mapping the language to ~text-mode~:
 
 If you use the ~use-package~ installation above, add this line inside the
 ~:config~ block.
+
+* License
+
+GPL-3.0-or-later. See [[file:LICENSE][LICENSE]].
 
 * Contributing
 
