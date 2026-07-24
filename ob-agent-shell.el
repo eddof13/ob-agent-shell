@@ -3,6 +3,7 @@
 ;; Copyright (C) 2026 Eddie Jesinsky
 
 ;; Author: Eddie Jesinsky <eddie@jesinsky.com>
+;; Assisted-by: Claude Code
 ;; Version: 0.2.0
 ;; Package-Requires: ((emacs "29.1") (agent-shell "0.50.1") (org "9.6"))
 ;; Keywords: tools, convenience, outlines
