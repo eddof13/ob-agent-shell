@@ -71,12 +71,12 @@
 (require 'map)
 
 (defgroup ob-agent-shell nil
-  "Org-babel integration for agent-shell."
+  "Org-babel integration for `agent-shell'."
   :group 'org-babel
   :prefix "ob-agent-shell-")
 
 (defcustom ob-agent-shell-timeout 30
-  "Seconds to wait for agent-shell to respond before signaling an error."
+  "Seconds to wait for `agent-shell' to respond before signaling an error."
   :type 'integer
   :group 'ob-agent-shell)
 
@@ -89,13 +89,13 @@ Requires pandoc to be installed and available on PATH."
 ;;; Buffer resolution
 
 (defvar ob-agent-shell--sessions (make-hash-table :test #'equal)
-  "Registry mapping session names to their agent-shell buffers.
+  "Registry mapping session names to their `agent-shell' buffers.
 Entries are added on first use of a :session name and removed when
 the associated buffer is no longer live.")
 
 (defun ob-agent-shell--resolve-session (name)
-  "Return the agent-shell buffer for session NAME, registering it if new.
-On first call for NAME, binds NAME to the currently active agent-shell
+  "Return the `agent-shell' buffer for session NAME, registering it if new.
+On first call for NAME, binds NAME to the currently active `agent-shell'
 buffer.  On subsequent calls, returns the same buffer as long as it
 remains live.  Signals an error if no active buffer can be found."
   (let ((buf (gethash name ob-agent-shell--sessions)))
@@ -111,7 +111,7 @@ remains live.  Signals an error if no active buffer can be found."
         active))))
 
 (defun ob-agent-shell--resolve-buffer (&optional name session)
-  "Return the agent-shell buffer to use, or signal an error.
+  "Return the `agent-shell' buffer to use, or signal an error.
 Resolution order: :buffer NAME, then :session SESSION, then most recently used."
   (if (and session (not name))
       (ob-agent-shell--resolve-session session)
@@ -131,7 +131,7 @@ Resolution order: :buffer NAME, then :session SESSION, then most recently used."
 
 (defun ob-agent-shell--strip-ui-fragments (text)
   "Return TEXT keeping only agent_message_chunk spans and untagged text.
-Current agent-shell tags all buffer content with an `agent-shell-ui-state'
+Current `agent-shell' tags all buffer content with an `agent-shell-ui-state'
 alist whose :qualified-id identifies the span type.  Only spans ending in
 \"agent_message_chunk\" are response prose; others (tool calls, thinking
 indicators, etc.) are UI-only and should be omitted."
@@ -195,11 +195,11 @@ Requires `ob-agent-shell-convert-markdown' to be non-nil and pandoc on PATH."
     (exit-recursive-edit)))
 
 (defun org-babel-execute:agent-shell (body params)
-  "Execute BODY by sending it to the active agent-shell buffer.
+  "Execute BODY by sending it to the active `agent-shell' buffer.
 PARAMS may include :buffer to target a specific buffer by name and
 :timeout to override `ob-agent-shell-timeout' for this block."
   (if (string-blank-p body)
-      (progn (org-babel-remove-result) nil)
+      (org-babel-remove-result)
     (let* ((shell-buf (ob-agent-shell--resolve-buffer (cdr (assq :buffer params))
                                                       (cdr (assq :session params))))
            (timeout (or (cdr (assq :timeout params)) ob-agent-shell-timeout))
@@ -272,11 +272,11 @@ PARAMS may include :buffer to target a specific buffer by name and
 
 (defvar org-babel-default-header-args:agent-shell
   '((:results . "output drawer") (:exports . "both"))
-  "Default header arguments for agent-shell source blocks.")
+  "Default header arguments for `agent-shell' source blocks.")
 
 (defun org-babel-prep-session:agent-shell (_session _params)
   "Use :session for buffer routing, not interactive sessions."
-  (user-error "Ob-agent-shell does not open interactive sessions; use :session to route blocks to a named buffer"))
+  (user-error "`ob-agent-shell' does not open interactive sessions; use :session to route blocks to a named buffer"))
 
 (provide 'ob-agent-shell)
 ;;; ob-agent-shell.el ends here
