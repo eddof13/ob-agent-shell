@@ -37,7 +37,7 @@ Ensure MELPA is in ~package-archives~, then:
 
 Or with ~M-x package-install RET ob-agent-shell RET~, then ~(require 'ob-agent-shell)~ and load the babel language as above.
 
-** use-package + package-vc (pre-MELPA / bleeding edge)
+** use-package + package-vc (bleeding edge / track git master)
 
 #+begin_src emacs-lisp
 (use-package ob-agent-shell
