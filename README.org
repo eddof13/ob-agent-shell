@@ -116,6 +116,14 @@ to-do lists, planning projects, and authoring documents.
 | ~:timeout N~     | Override ~ob-agent-shell-timeout~ for this block only.   |
 |                  | N is seconds. Useful for long-running prompts without    |
 |                  | raising the global default.                              |
+| ~:model ID~      | Switch the session to this model id or display name      |
+|                  | before sending. The change sticks for later blocks and   |
+|                  | for interactive use of that shell.                       |
+| ~:thought-level ID~ | Switch the session thought level the same way. Errors |
+|                  | when the agent does not advertise one.                   |
+| ~:context TEXT~  | Prepend TEXT to the block body to form the prompt. A     |
+|                  | single token that names an Org element uses that         |
+|                  | element's body instead of the token.                     |
 | ~:results drawer~ | Wrap result in ~:RESULTS:...:END:~ tokens so org-babel   |
 |                  | can reliably find and replace it on re-run. Default.     |
 | ~:results raw~   | Insert result as raw text without a drawer wrapper.      |
@@ -208,6 +216,45 @@ Summarize in one paragraph with a * Heading.
 ,#+end_src
 #+end_src
 
+** Model, thought level, and context
+
+~:model~ and ~:thought-level~ change the live session, then the block is sent.
+Pass either an id (~claude-sonnet-4-5~, ~high~) or the display name the shell
+shows (~Sonnet~, ~High~). An exact id wins over a display name. A display name
+that matches more than one id is an error, and so is a value the agent does
+not advertise. The prompt is not sent in those cases.
+
+Both settings remain in effect after the block. A file-level property is the
+usual place to pin them:
+
+#+begin_src org
+,#+PROPERTY: header-args:agent-shell :session notes :model Sonnet :thought-level high
+#+end_src
+
+~:context~ is extra prompt text, not a session setting. It is placed before
+the block body, separated by a blank line. When the value is a single token
+and an element in the buffer has that ~#+name~, the element's own text is used
+and the element is not executed:
+
+#+begin_src org
+,#+name: voice
+,#+begin_example
+Answer in one sentence.
+,#+end_example
+
+,#+begin_src agent-shell :model Sonnet :thought-level high :context voice
+What is the capital of France?
+,#+end_src
+#+end_src
+
+That block sends:
+
+#+begin_example
+Answer in one sentence.
+
+What is the capital of France?
+#+end_example
+
 ** Targeting a specific buffer
 
 Use ~:buffer~ to route a block to a named agent-shell session:
@@ -283,12 +330,14 @@ for i in range(10):
 
 When a block is executed:
 
-1. Subscribes to ~turn-complete~, ~error~, and ~permission-request~ events
-2. Sends the block body via ~agent-shell-insert~
-3. Waits via ~sit-for~ (non-freezing — display and timers remain live)
-4. On ~turn-complete~, walks the response region in the buffer collecting only
+1. When ~:model~ or ~:thought-level~ is set, switches the session and waits
+   for the agent to accept the change
+2. Subscribes to ~turn-complete~, ~error~, and ~permission-request~ events
+3. Sends the prompt (~:context~, then the block body) via ~agent-shell-insert~
+4. Waits via ~sit-for~ (non-freezing — display and timers remain live)
+5. On ~turn-complete~, walks the response region in the buffer collecting only
    plain text spans, skipping tool-call UI fragments (~agent-shell-ui-state~)
-5. Cleans up all subscriptions and the timeout timer via ~unwind-protect~
+6. Cleans up all subscriptions and the timeout timer via ~unwind-protect~
 
 If a tool call triggers a permission prompt, a message appears in the echo
 area pointing you to the agent-shell buffer to approve it.
@@ -301,6 +350,11 @@ This package depends on three public APIs added to agent-shell in 0.50.1
 - ~agent-shell-shell-buffer~ — public buffer resolver
 - ~agent-shell-goto-last-interaction~ — navigate to the last interaction
 - ~agent-shell-interaction-at-point~ — extract the interaction at point
+
+~:model~ and ~:thought-level~ call the private setters
+~agent-shell--config-option-set-model-id~ and
+~agent-shell--config-option-set-thought-level-id~. There is no public
+non-interactive equivalent yet.
 
 * Known issues
 
