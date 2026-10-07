@@ -48,38 +48,53 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
      (unwind-protect
          (cl-letf (((symbol-function 'ob-agent-shell--resolve-buffer)
                     (lambda (&rest _) ob-agent-shell-tests-shell))
-                   ((symbol-function 'agent-shell--state)
-                    (lambda () '((:session . ((:id . "session"))))))
-                   ((symbol-function 'agent-shell--get-available-models)
-                    (lambda (_) ob-agent-shell-tests-models))
-                   ((symbol-function 'agent-shell--get-available-thought-levels)
-                    (lambda (_) ob-agent-shell-tests-thoughts))
-                   ((symbol-function 'agent-shell--current-model-id)
-                    (lambda (_) ob-agent-shell-tests-current-model))
-                   ((symbol-function 'agent-shell--current-thought-level-id)
-                    (lambda (_) ob-agent-shell-tests-current-thought))
-                   ((symbol-function 'agent-shell--config-option-set-model-id)
+                   ((symbol-function 'agent-shell-config-option)
                     (lambda (&rest args)
-                      (let ((model-id (plist-get args :model-id))
+                      (let ((category (plist-get args :category)))
+                        (cond
+                         ((equal category "model")
+                          (when ob-agent-shell-tests-models
+                            `((:id . "model")
+                              (:category . "model")
+                              (:current-value . ,ob-agent-shell-tests-current-model)
+                              (:options . ,ob-agent-shell-tests-models))))
+                         ((equal category "thought_level")
+                          (when ob-agent-shell-tests-thoughts
+                            `((:id . "effort")
+                              (:category . "thought_level")
+                              (:current-value . ,ob-agent-shell-tests-current-thought)
+                              (:options . ,ob-agent-shell-tests-thoughts))))
+                         (t nil)))))
+                   ((symbol-function 'agent-shell-config-option-value)
+                    (lambda (&rest args)
+                      (let ((category (plist-get args :category)))
+                        (cond
+                         ((equal category "model")
+                          ob-agent-shell-tests-current-model)
+                         ((equal category "thought_level")
+                          ob-agent-shell-tests-current-thought)
+                         (t nil)))))
+                   ((symbol-function 'agent-shell-set-config-option-value)
+                    (lambda (&rest args)
+                      (let ((category (plist-get args :category))
+                            (value (plist-get args :value))
                             (on-success (plist-get args :on-success))
                             (on-failure (plist-get args :on-failure)))
                         (unless (eq (current-buffer) ob-agent-shell-tests-shell)
-                          (error "Model setter ran outside the shell buffer"))
-                        (push (list 'model model-id) ob-agent-shell-tests-calls)
+                          (error "Config setter ran outside the shell buffer"))
                         (cond
-                         (ob-agent-shell-tests-fail-model
-                          (funcall on-failure '((message . "refused")) nil))
-                         (ob-agent-shell-tests-defer-model
-                          (setq ob-agent-shell-tests-defer-model on-success))
-                         (t (funcall on-success))))))
-                   ((symbol-function 'agent-shell--config-option-set-thought-level-id)
-                    (lambda (&rest args)
-                      (let ((thought-level-id (plist-get args :thought-level-id))
-                            (on-success (plist-get args :on-success)))
-                        (unless (eq (current-buffer) ob-agent-shell-tests-shell)
-                          (error "Thought setter ran outside the shell buffer"))
-                        (push (list 'thought thought-level-id) ob-agent-shell-tests-calls)
-                        (funcall on-success))))
+                         ((equal category "model")
+                          (push (list 'model value) ob-agent-shell-tests-calls)
+                          (cond
+                           (ob-agent-shell-tests-fail-model
+                            (funcall on-failure '((:acp-error . ((message . "refused"))))))
+                           (ob-agent-shell-tests-defer-model
+                            (setq ob-agent-shell-tests-defer-model on-success))
+                           (t (funcall on-success nil))))
+                         ((equal category "thought_level")
+                          (push (list 'thought value) ob-agent-shell-tests-calls)
+                          (funcall on-success nil))
+                         (t (error "Unexpected category %S" category))))))
                    ((symbol-function 'agent-shell-subscribe-to)
                     (lambda (&rest args)
                       (let ((event (plist-get args :event))
@@ -112,21 +127,21 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
               (reverse ob-agent-shell-tests-calls)))
 
 (ert-deftest ob-agent-shell-resolve-choice-prefers-exact-id ()
-  (let ((items '(((:model-id . "Sonnet") (:name . "Claude"))
-                 ((:model-id . "x") (:name . "Sonnet")))))
+  (let ((items '(((:value . "Sonnet") (:name . "Claude"))
+                 ((:value . "x") (:name . "Sonnet")))))
     (should (equal "Sonnet"
                    (ob-agent-shell--resolve-choice
                     "Sonnet" items
-                    (lambda (item) (map-elt item :model-id))
+                    (lambda (item) (map-elt item :value))
                     (lambda (item) (map-elt item :name))
                     "model")))))
 
 (ert-deftest ob-agent-shell-resolve-choice-matches-name-case-insensitively ()
-  (let ((items '(((:model-id . "claude-sonnet-4-5") (:name . "Sonnet")))))
+  (let ((items '(((:value . "claude-sonnet-4-5") (:name . "Sonnet")))))
     (should (equal "claude-sonnet-4-5"
                    (ob-agent-shell--resolve-choice
                     "sonnet" items
-                    (lambda (item) (map-elt item :model-id))
+                    (lambda (item) (map-elt item :value))
                     (lambda (item) (map-elt item :name))
                     "model")))))
 
@@ -188,7 +203,7 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
 (ert-deftest ob-agent-shell-execute-sets-model-then-thought-then-sends-context ()
   (ob-agent-shell-tests-with-agent
     (setq ob-agent-shell-tests-models
-          '(((:model-id . "claude-sonnet-4-5") (:name . "Sonnet")))
+          '(((:value . "claude-sonnet-4-5") (:name . "Sonnet")))
           ob-agent-shell-tests-thoughts
           '(((:value . "high") (:name . "High")))
           ob-agent-shell-tests-current-model "other"
@@ -211,7 +226,7 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
 (ert-deftest ob-agent-shell-execute-skips-setters-when-already-current ()
   (ob-agent-shell-tests-with-agent
     (setq ob-agent-shell-tests-models
-          '(((:model-id . "claude-sonnet-4-5") (:name . "Sonnet")))
+          '(((:value . "claude-sonnet-4-5") (:name . "Sonnet")))
           ob-agent-shell-tests-thoughts
           '(((:value . "high") (:name . "High")))
           ob-agent-shell-tests-current-model "claude-sonnet-4-5"
@@ -225,7 +240,7 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
 (ert-deftest ob-agent-shell-execute-does-not-send-when-model-is-unknown ()
   (ob-agent-shell-tests-with-agent
     (setq ob-agent-shell-tests-models
-          '(((:model-id . "claude-sonnet-4-5") (:name . "Sonnet"))))
+          '(((:value . "claude-sonnet-4-5") (:name . "Sonnet"))))
     (let ((err (should-error
                 (org-babel-execute:agent-shell "Hello" '((:model . "Opus")))
                 :type 'user-error)))
@@ -246,7 +261,7 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
 (ert-deftest ob-agent-shell-execute-does-not-send-when-model-setter-fails ()
   (ob-agent-shell-tests-with-agent
     (setq ob-agent-shell-tests-models
-          '(((:model-id . "claude-sonnet-4-5") (:name . "Sonnet")))
+          '(((:value . "claude-sonnet-4-5") (:name . "Sonnet")))
           ob-agent-shell-tests-thoughts
           '(((:value . "high") (:name . "High")))
           ob-agent-shell-tests-current-model "other"
@@ -264,24 +279,32 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
 (ert-deftest ob-agent-shell-execute-waits-for-model-before-thought-and-send ()
   (ob-agent-shell-tests-with-agent
     (setq ob-agent-shell-tests-models
-          '(((:model-id . "sonnet") (:name . "Sonnet")))
+          '(((:value . "sonnet") (:name . "Sonnet")))
           ob-agent-shell-tests-thoughts
           '(((:value . "high") (:name . "High")))
           ob-agent-shell-tests-current-model "other"
           ob-agent-shell-tests-current-thought "low"
           ob-agent-shell-tests-defer-model t)
     (let ((release nil))
-      (cl-letf (((symbol-function 'agent-shell--config-option-set-model-id)
+      (cl-letf (((symbol-function 'agent-shell-set-config-option-value)
                  (lambda (&rest args)
-                   (push (list 'model (plist-get args :model-id))
-                         ob-agent-shell-tests-calls)
-                   (setq release (plist-get args :on-success)))))
+                   (let ((category (plist-get args :category))
+                         (value (plist-get args :value))
+                         (on-success (plist-get args :on-success)))
+                     (cond
+                      ((equal category "model")
+                       (push (list 'model value) ob-agent-shell-tests-calls)
+                       (setq release on-success))
+                      ((equal category "thought_level")
+                       (push (list 'thought value) ob-agent-shell-tests-calls)
+                       (funcall on-success nil))
+                      (t (error "Unexpected category %S" category)))))))
         (run-with-timer 0.15 nil
                         (lambda ()
                           (should release)
                           (should-not (ob-agent-shell-tests-call 'thought))
                           (should-not (ob-agent-shell-tests-call 'insert))
-                          (funcall release)))
+                          (funcall release nil)))
         (should (equal "Paris."
                        (org-babel-execute:agent-shell
                         "Hello"
@@ -296,7 +319,7 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
 (ert-deftest ob-agent-shell-execute-times-out-while-waiting-for-model ()
   (ob-agent-shell-tests-with-agent
     (setq ob-agent-shell-tests-models
-          '(((:model-id . "sonnet") (:name . "Sonnet")))
+          '(((:value . "sonnet") (:name . "Sonnet")))
           ob-agent-shell-tests-current-model "other"
           ob-agent-shell-tests-defer-model t)
     (let ((err (should-error

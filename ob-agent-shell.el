@@ -5,7 +5,7 @@
 ;; Author: Eddie Jesinsky <eddie@jesinsky.com>
 ;; Assisted-by: Claude Code
 ;; Version: 0.3.0
-;; Package-Requires: ((emacs "29.1") (agent-shell "0.50.1") (org "9.6"))
+;; Package-Requires: ((emacs "29.1") (agent-shell "0.85.3") (org "9.6"))
 ;; Keywords: tools, convenience, outlines
 ;; URL: https://github.com/eddof13/ob-agent-shell
 ;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -84,14 +84,10 @@
 
 (declare-function org-in-commented-heading-p "org")
 
-;; Private until agent-shell exposes non-interactive setters.
-(declare-function agent-shell--state "agent-shell")
-(declare-function agent-shell--current-model-id "agent-shell")
-(declare-function agent-shell--current-thought-level-id "agent-shell")
-(declare-function agent-shell--get-available-models "agent-shell")
-(declare-function agent-shell--get-available-thought-levels "agent-shell")
-(declare-function agent-shell--config-option-set-model-id "agent-shell")
-(declare-function agent-shell--config-option-set-thought-level-id "agent-shell")
+;; Public agent-shell config API (0.85.3+; see xenodium/agent-shell#860).
+(declare-function agent-shell-config-option "agent-shell")
+(declare-function agent-shell-config-option-value "agent-shell")
+(declare-function agent-shell-set-config-option-value "agent-shell")
 
 (defgroup ob-agent-shell nil
   "Org-babel integration for `agent-shell'."
@@ -293,6 +289,14 @@ more than one display name."
                   (mapconcat id-fn matches ", ")))
      (t (funcall id-fn (car matches))))))
 
+(defun ob-agent-shell--config-choices (category)
+  "Return advertised option values for CATEGORY, or nil if none.
+CATEGORY is an ACP category such as \"model\" or \"thought_level\".
+Call with the shell buffer current.  Each choice is an alist with
+:value and optional :name."
+  (when-let* ((option (agent-shell-config-option :category category)))
+    (map-elt option :options)))
+
 (defun ob-agent-shell--resolve-model-id (model)
   "Return the session model id for MODEL, or nil when MODEL is unset.
 MODEL is an id or a display name advertised by the current session.
@@ -300,8 +304,8 @@ Call with the shell buffer current."
   (when (and model (not (string-blank-p (if (stringp model) model (format "%s" model)))))
     (ob-agent-shell--resolve-choice
      (if (stringp model) model (format "%s" model))
-     (agent-shell--get-available-models (agent-shell--state))
-     (lambda (item) (map-elt item :model-id))
+     (ob-agent-shell--config-choices "model")
+     (lambda (item) (map-elt item :value))
      (lambda (item) (map-elt item :name))
      "model")))
 
@@ -310,7 +314,7 @@ Call with the shell buffer current."
 THOUGHT is an id or a display name.  Signal `user-error' when the agent
 advertises no thought level.  Call with the shell buffer current."
   (when (and thought (not (string-blank-p (if (stringp thought) thought (format "%s" thought)))))
-    (let ((levels (agent-shell--get-available-thought-levels (agent-shell--state))))
+    (let ((levels (ob-agent-shell--config-choices "thought_level")))
       (unless levels
         (user-error "Agent does not advertise a thought level"))
       (ob-agent-shell--resolve-choice
@@ -330,47 +334,43 @@ advertises no thought level.  Call with the shell buffer current."
         (format "%S" acp-error)))
    (t (format "%S" acp-error))))
 
+(defun ob-agent-shell--set-config-value (category value kind on-success on-error)
+  "Set CATEGORY config option to VALUE, then call ON-SUCCESS.
+KIND labels errors, for example \"model\".  Skip the request when VALUE
+is nil or already current.  ON-ERROR receives a message string.  Call
+with the shell buffer current."
+  (cond
+   ((null value) (funcall on-success))
+   ((equal value (agent-shell-config-option-value :category category))
+    (funcall on-success))
+   (t
+    (condition-case err
+        (agent-shell-set-config-option-value
+         :category category
+         :value value
+         :on-success (lambda (_result) (funcall on-success))
+         :on-failure
+         (lambda (result)
+           (funcall on-error
+                    (format "Failed to set %s %s: %s"
+                            kind value
+                            (ob-agent-shell--acp-error-message
+                             (map-elt result :acp-error))))))
+      (error (funcall on-error (error-message-string err)))))))
+
 (defun ob-agent-shell--set-model-id (model-id on-success on-error)
   "Set the session model to MODEL-ID, then call ON-SUCCESS.
 Skip the request when MODEL-ID is nil or already current.  ON-ERROR
 receives a message string.  Call with the shell buffer current."
-  (cond
-   ((null model-id) (funcall on-success))
-   ((equal model-id (agent-shell--current-model-id (agent-shell--state)))
-    (funcall on-success))
-   (t
-    (condition-case err
-        (agent-shell--config-option-set-model-id
-         :model-id model-id
-         :on-success on-success
-         :on-failure
-         (lambda (acp-error _raw)
-           (funcall on-error
-                    (format "Failed to set model %s: %s"
-                            model-id
-                            (ob-agent-shell--acp-error-message acp-error)))))
-      (error (funcall on-error (error-message-string err)))))))
+  (ob-agent-shell--set-config-value
+   "model" model-id "model" on-success on-error))
 
 (defun ob-agent-shell--set-thought-id (thought-id on-success on-error)
   "Set the session thought level to THOUGHT-ID, then call ON-SUCCESS.
 Skip the request when THOUGHT-ID is nil or already current.  ON-ERROR
 receives a message string.  Call with the shell buffer current."
-  (cond
-   ((null thought-id) (funcall on-success))
-   ((equal thought-id (agent-shell--current-thought-level-id (agent-shell--state)))
-    (funcall on-success))
-   (t
-    (condition-case err
-        (agent-shell--config-option-set-thought-level-id
-         :thought-level-id thought-id
-         :on-success on-success
-         :on-failure
-         (lambda (acp-error _raw)
-           (funcall on-error
-                    (format "Failed to set thought level %s: %s"
-                            thought-id
-                            (ob-agent-shell--acp-error-message acp-error)))))
-      (error (funcall on-error (error-message-string err)))))))
+  (ob-agent-shell--set-config-value
+   "thought_level" thought-id "thought level" on-success on-error))
 
 (defun ob-agent-shell--apply-session-options (shell-buf model thought on-success on-error)
   "Point SHELL-BUF at MODEL and THOUGHT, then call ON-SUCCESS.

@@ -14,7 +14,7 @@ routes babel blocks through your existing agent-shell session.
 * Requirements
 
 - Emacs 29.1+
-- [[https://github.com/xenodium/agent-shell][agent-shell]] 0.50.1 or later (requires ~agent-shell-goto-last-interaction~ and ~agent-shell-interaction-at-point~)
+- [[https://github.com/xenodium/agent-shell][agent-shell]] 0.85.3 or later (requires the public config-option API from [[https://github.com/xenodium/agent-shell/issues/860][#860]], plus ~agent-shell-goto-last-interaction~ and ~agent-shell-interaction-at-point~)
 - org-mode 9.6+
 
 * Installation
@@ -344,17 +344,15 @@ area pointing you to the agent-shell buffer to approve it.
 
 * Relationship to agent-shell upstream
 
-This package depends on three public APIs added to agent-shell in 0.50.1
-(first released in the v0.52.2 tag line):
+This package depends on public APIs from agent-shell:
 
 - ~agent-shell-shell-buffer~ — public buffer resolver
 - ~agent-shell-goto-last-interaction~ — navigate to the last interaction
 - ~agent-shell-interaction-at-point~ — extract the interaction at point
-
-~:model~ and ~:thought-level~ call the private setters
-~agent-shell--config-option-set-model-id~ and
-~agent-shell--config-option-set-thought-level-id~. There is no public
-non-interactive equivalent yet.
+- ~agent-shell-config-option~ / ~agent-shell-config-option-value~ /
+  ~agent-shell-set-config-option-value~ — read and change session config
+  options by ACP category (~"model"~, ~"thought_level"~), added in 0.85.3
+  for [[https://github.com/xenodium/agent-shell/issues/860][#860]]
 
 * Known issues
 
