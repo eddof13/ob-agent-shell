@@ -34,6 +34,8 @@
 (defvar ob-agent-shell-tests-defer-model nil)
 (defvar ob-agent-shell-tests-fail-model nil)
 (defvar ob-agent-shell-tests-on-complete nil)
+(defvar ob-agent-shell-tests-on-error nil)
+(defvar ob-agent-shell-tests-error-event nil)
 
 (defmacro ob-agent-shell-tests-with-agent (&rest body)
   "Evaluate BODY with agent-shell I/O replaced by recorders.
@@ -43,6 +45,8 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
   `(let ((ob-agent-shell-tests-shell (generate-new-buffer " *ob-agent-shell-test*"))
          (ob-agent-shell-tests-calls nil)
          (ob-agent-shell-tests-on-complete nil)
+         (ob-agent-shell-tests-on-error nil)
+         (ob-agent-shell-tests-error-event nil)
          (ob-agent-shell-tests-defer-model nil)
          (ob-agent-shell-tests-fail-model nil))
      (unwind-protect
@@ -102,6 +106,8 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
                         (push (list 'subscribe event) ob-agent-shell-tests-calls)
                         (when (eq event 'turn-complete)
                           (setq ob-agent-shell-tests-on-complete on-event))
+                        (when (eq event 'error)
+                          (setq ob-agent-shell-tests-on-error on-event))
                         'token)))
                    ((symbol-function 'agent-shell-insert)
                     (lambda (&rest args)
@@ -111,8 +117,15 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
                                   (plist-get args :no-focus)
                                   (plist-get args :shell-buffer))
                             ob-agent-shell-tests-calls)
-                      (when ob-agent-shell-tests-on-complete
-                        (funcall ob-agent-shell-tests-on-complete nil))))
+                      (cond
+                       (ob-agent-shell-tests-error-event
+                        (funcall ob-agent-shell-tests-on-error
+                                 ob-agent-shell-tests-error-event))
+                       (ob-agent-shell-tests-on-complete
+                        ;; Event alist shape from `agent-shell--emit-event'.
+                        (funcall ob-agent-shell-tests-on-complete
+                                 '((:data . ((:stop-reason . "end_turn")))
+                                   (:event . turn-complete)))))))
                    ((symbol-function 'agent-shell-unsubscribe)
                     (lambda (&rest _) nil))
                    ((symbol-function 'ob-agent-shell--extract-response)
@@ -222,6 +235,19 @@ Calls are pushed onto `ob-agent-shell-tests-calls'."
                          "Be brief.\n\nWhat is the capital of France?"
                          t t ob-agent-shell-tests-shell)
                    (car (ob-agent-shell-tests-call 'insert))))))
+
+;; `agent-shell--emit-event' calls subscribers with an event alist whose
+;; payload sits under :data, e.g. ((:data (:code . -32603) (:message . "boom"))
+;; (:event . error)).
+(ert-deftest ob-agent-shell-execute-reports-error-code-and-message ()
+  (ob-agent-shell-tests-with-agent
+    (setq ob-agent-shell-tests-error-event
+          '((:data . ((:code . -32603) (:message . "boom")))
+            (:event . error)))
+    (let ((err (should-error (org-babel-execute:agent-shell "Hello" nil)
+                             :type 'user-error)))
+      (should (equal "ob-agent-shell error [-32603]: boom"
+                     (cadr err))))))
 
 (ert-deftest ob-agent-shell-execute-skips-setters-when-already-current ()
   (ob-agent-shell-tests-with-agent

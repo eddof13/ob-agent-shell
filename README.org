@@ -14,7 +14,7 @@ routes babel blocks through your existing agent-shell session.
 * Requirements
 
 - Emacs 29.1+
-- [[https://github.com/xenodium/agent-shell][agent-shell]] 0.85.3 or later (requires the public config-option API from [[https://github.com/xenodium/agent-shell/issues/860][#860]], plus ~agent-shell-goto-last-interaction~ and ~agent-shell-interaction-at-point~)
+- [[https://github.com/xenodium/agent-shell][agent-shell]] 0.85.3 or later (requires the public config-option API from [[https://github.com/xenodium/agent-shell/issues/860][#860]], plus ~agent-shell-goto-last-interaction~ and ~agent-shell-interaction-at-point~); verified against agent-shell 0.89.4
 - org-mode 9.6+
 
 * Installation

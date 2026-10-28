@@ -4,7 +4,7 @@
 
 ;; Author: Eddie Jesinsky <eddie@jesinsky.com>
 ;; Assisted-by: Claude Code
-;; Version: 0.3.0
+;; Version: 0.3.1
 ;; Package-Requires: ((emacs "29.1") (agent-shell "0.85.3") (org "9.6"))
 ;; Keywords: tools, convenience, outlines
 ;; URL: https://github.com/eddof13/ob-agent-shell
@@ -463,8 +463,9 @@ to prepend text to BODY."
               (push (agent-shell-subscribe-to
                      :shell-buffer shell-buf
                      :event 'error
-                     :on-event (lambda (data)
-                                 (let ((was-waiting waiting-for-permission))
+                     :on-event (lambda (event)
+                                 (let ((was-waiting waiting-for-permission)
+                                       (data (map-elt event :data)))
                                    (setq waiting-for-permission nil
                                          err (format "ob-agent-shell error [%s]: %s"
                                                      (map-elt data :code)
